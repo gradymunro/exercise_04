@@ -1,6 +1,6 @@
 ---
 title: 'Weekly Exercises #4'
-author: "Put your name here"
+author: "Grady Munro"
 output: 
   html_document:
     keep_md: TRUE
@@ -95,14 +95,95 @@ These exercises will reiterate what you learned in the "Mapping data with R" tut
 ### Starbucks locations (`ggmap`)
 
   1. Add the `Starbucks` locations to a world map. Add an aesthetic to the world map that sets the color of the points according to the ownership type. What, if anything, can you deduce from this visualization?  
+  
+```{r}
+starbucks_worldmap <- get_stamenmap(
+    bbox = c(left = -180, bottom = -57, right = 179, top = 82.1), 
+    maptype = "terrain",
+    zoom = 2)
+
+ggmap(starbucks_worldmap) +
+  geom_point(data = Starbucks,
+             aes( x = Longitude,
+                  y = Latitude,
+                  colour = `Ownership Type`),
+             alpha = 1,
+             size = 0.2) +
+  labs(title = "Map of Starbucks Locations by Ownership Type") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme_map()
+```
+
+From this graph you can determine some general trends in the ownership types of Starbucks franchises across continents. North America is primarily Company Owned or Licensed, Europe is a mix of all types, while East Asia is primarily Joint Venture. 
 
   2. Construct a new map of Starbucks locations in the Twin Cities metro area (approximately the 5 county metro area).  
+  
+```{r}
+starbucks_twincities_map <- get_stamenmap(
+    bbox = c(left = -93.3398, bottom = 44.8724, right = -92.9903, top = 45.0459), 
+    maptype = "terrain",
+    zoom = 12)
+
+ggmap(starbucks_twincities_map) +
+  geom_point(data = Starbucks,
+             aes( x = Longitude,
+                  y = Latitude,
+                  colour = `Ownership Type`),
+             alpha = 1,
+             size = 2) +
+  labs(title = "Map of Starbucks Locations, in the Twin Cities Metro Area, by Ownership Type") +
+  theme_map()
+```
+
 
   3. In the Twin Cities plot, play with the zoom number. What does it do?  (just describe what it does - don't actually include more than one map).  
+  
+Changing the zoom number changes the level of detail that is shown on the map. By decreasing the zoom, you decrease the level of detail and so less features (such as the road grid, place names, lakes, etc) show up on the map. By increasing the zoom number, you increase the level of detail shown in the map so that more features show up.
 
   4. Try a couple different map types (see `get_stamenmap()` in help and look at `maptype`). Include a map with one of the other map types.  
+  
+```{r}
+starbucks_twincities_tonermap <- get_stamenmap(
+    bbox = c(left = -93.3398, bottom = 44.8724, right = -92.9903, top = 45.0459), 
+    maptype = "toner-lite",
+    zoom = 12)
+
+ggmap(starbucks_twincities_tonermap) +
+  geom_point(data = Starbucks,
+             aes( x = Longitude,
+                  y = Latitude,
+                  colour = `Ownership Type`),
+             alpha = 1,
+             size = 2) +
+  labs(title = "Map of Starbucks Locations, in the Twin Cities Metro Area, by Ownership Type") +
+  theme_map()
+```
+
 
   5. Add a point to the map that indicates Macalester College and label it appropriately. There are many ways you can do think, but I think it's easiest with the `annotate()` function (see `ggplot2` cheatsheet).
+  
+```{r}
+ggmap(starbucks_twincities_tonermap) +
+  geom_point(data = Starbucks,
+             aes( x = Longitude,
+                  y = Latitude,
+                  colour = `Ownership Type`),
+             alpha = 1,
+             size = 2) +
+  labs(title = "Map of Starbucks Locations, in the Twin Cities Metro Area, by Ownership Type") +
+  annotate(geom = "point", 
+           x = -93.17123, 
+           y = 44.93790, 
+           label = "Macalester College",
+           shape = 18) +
+  annotate(geom = "text", 
+           x = -93.17, 
+           y = 44.935, 
+           label = "Macalester College",
+           size = 2) +
+  theme_map()
+```
+
 
 ### Choropleth maps with Starbucks data (`geom_map()`)
 

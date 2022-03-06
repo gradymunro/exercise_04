@@ -204,7 +204,45 @@ starbucks_with_2018_pop_est <-
 
   6. **`dplyr` review**: Look through the code above and describe what each line of code does.
 
+- Line 1 creates a new data set called "census_pop_est_2018" and populates it by reading in data from the dropbox link.
+- Line 2 separates the values in the state variable into two columns named "dot" and "state", essentially removing the period from the beginning of the state names.
+- Line 3 selects all the variables except for the dot variable.
+- Line 4 replaces the state variable with a new state variable where all the names are in lowercase.
+- Lines 5 & 6 are the creation of a new data set called "starbucks_with_2018_pop_est" that is populated with the "starbucks_us_by_state" data. 
+- Lines 7 & 8 perform a left_join where the newly created census_pop_est_2018 is joined to the starbucks_us_by_state data, and the merging variable is the state names. the "state_name" = "state" is telling R that the state_name variable in the starbucks data is the same as the state variable in the census data. 
+- Line 9 creates a new variable called "starbucks_per_10000" which is as the name entails. It is calculated by dividing the number of Starbucks in the state by the state population and then multiplying it by 10,000. 
+
   7. Create a choropleth map that shows the number of Starbucks per 10,000 people on a map of the US. Use a new fill color, add points for all Starbucks in the US (except Hawaii and Alaska), add an informative title for the plot, and include a caption that says who created the plot (you!). Make a conclusion about what you observe.
+  
+```{r}
+states_map <- map_data("state")
+
+starbucks_us_locations <- Starbucks %>% 
+  filter(Country == "US") %>% 
+  left_join(starbucks_with_2018_pop_est,
+            by = c("State/Province" = "State/Province")) %>% 
+  filter(state_name != "alaska" & state_name != "hawaii")
+
+starbucks_us_locations %>% 
+  ggplot() +
+  geom_map(map = states_map,
+           aes(map_id = state_name,
+               fill = starbucks_per_10000)) +
+  scale_fill_viridis_c(option = "viridis") +
+  geom_point(aes(x = Longitude,
+                 y = Latitude),
+             size = 1,
+             shape = 18) +
+  expand_limits(x = states_map$long - 2, 
+                y = states_map$lat) + 
+  labs(title = "Map of Starbucks Locations in the Lower 48, with States Coloured by the Number of Starbucks 
+       per 10,000 people",
+       fill = "Starbucks per 
+10,000 People") +
+  theme_map()
+```
+
+From the above map, we can come to the unsurprising conclusion that the state of Washington, which is the birthplace of Starbucks, has the largest number of Starbucks locations per 10,000 people than anywhere else in the country. We can see the distribution of Starbucks locations across the US and pick out distinct population centres like the Twin Cities or Chicago that have a large number of locations. 
 
 ### A few of your favorite things (`leaflet`)
 
@@ -217,6 +255,55 @@ starbucks_with_2018_pop_est <-
   * Connect all your locations together with a line in a meaningful way (you may need to order them differently in the original data).  
   
   * If there are other variables you want to add that could enhance your plot, do that now.  
+  
+```{r}
+favorite_stp_by_grady <- tibble(
+  place = c("Home", "Family Ranch", "Sakura", 
+            "Calaway Park", "Springbank Links", "Rattary Place",
+            "Springbank Park For All Seasons", "Tim Hortons", "Winter Skate Spot",
+            "Tony's Shoe Repair"),
+  long = c(-114.4326, -114.397, -114.47251, 
+           -114.3579, -114.3135, -114.4308, 
+           -114.34847, -114.47163, -114.2987,
+           -114.47184),
+  lat = c(51.1214, 51.0992, 51.18399,
+          51.0866, 51.1144, 51.1463, 
+          51.06759, 51.15926, 51.1217,
+          51.19086),
+  rank = c(1, 2, 7, 
+           10, 3, 4,
+           5, 9, 6,
+           8),
+  top_three = c("Top 3", "Top 3", "Bottom 7",
+                "Bottom 7", "Top 3", "Bottom 7",
+                "Bottom 7", "Bottom 7", "Bottom 7",
+                "Bottom 7")
+  )
+
+favorite_stp_by_grady <- favorite_stp_by_grady %>% 
+  arrange(rank) %>% 
+  mutate(top_three = as.factor(top_three))
+
+pal <- colorFactor(palette = c("Blue", "Red"),
+                   domain = favorite_stp_by_grady$top_three)
+
+leaflet(data = favorite_stp_by_grady) %>% 
+  addTiles() %>% 
+  addCircles(lng = ~long,
+             lat = ~lat,
+             label = ~place,
+             color = ~pal(top_three),
+             opacity = 1) %>% 
+  addPolylines(lng = ~long,
+               lat = ~lat,
+               weight = 1) %>% 
+  addLegend(position = "topleft",
+            pal = pal,
+            values = ~top_three, 
+            opacity = 1,
+            title = "Top Three Locations")
+```
+
   
 ## Revisiting old datasets
 
@@ -243,14 +330,61 @@ Stations<-read_csv("http://www.macalester.edu/~dshuman1/data/112/DC-Stations.csv
   9. Use the latitude and longitude variables in `Stations` to make a visualization of the total number of departures from each station in the `Trips` data. Use either color or size to show the variation in number of departures. This time, plot the points on top of a map. Use any of the mapping tools you'd like.
   
 ```{r}
+Station_Num <- Trips %>% 
+  group_by(sstation) %>% 
+  summarize(num_departures = n()) %>% 
+  ungroup() %>% 
+  left_join(Stations,
+            by = c("sstation" = "name"))
 
+pal <- colorNumeric(palette = "magma",
+                   domain = Station_Num$num_departures)
+
+leaflet(data = Station_Num) %>% 
+  addTiles() %>% 
+  addCircles(lng = ~long,
+             lat = ~lat,
+             label = ~sstation,
+             opacity = 1,
+             color = ~pal(num_departures)) %>% 
+  addLegend(position = "topleft",
+            pal = pal,
+            values = ~num_departures, 
+            opacity = 1,
+            title = "Departures From Each Station")
 ```
   
   10. Only 14.4% of the trips in our data are carried out by casual users. Create a plot that shows which area(s) have stations with a much higher percentage of departures by casual users. What patterns do you notice? Also plot this on top of a map. I think it will be more clear what the patterns are.
   
 ```{r}
+Station_Proportion <- Trips %>% 
+  group_by(sstation, client) %>% 
+  summarize(num_departures = n()) %>% 
+  group_by(sstation) %>% 
+  mutate(total_departures = sum(num_departures),
+         proportion_departures = num_departures/total_departures) %>% 
+  filter(client == "Casual") %>% 
+  left_join(Stations,
+            by = c("sstation" = "name"))
 
+pal <- colorNumeric(palette = "magma",
+                   domain = Station_Proportion$proportion_departures)
+
+leaflet(data = Station_Proportion) %>% 
+  addTiles() %>% 
+  addCircles(lng = ~long,
+             lat = ~lat,
+             label = ~sstation,
+             opacity = 1,
+             color = ~pal(proportion_departures)) %>% 
+  addLegend(position = "topleft",
+            pal = pal,
+            values = ~proportion_departures, 
+            opacity = 1,
+            title = "Proportion of Departures by Casual Riders")
 ```
+  
+When looking at this map, we can see that the areas with the highest proportion of casual riders are downtown Washington, specifically surrounding the National Mall. This makes sense as these riders would likely be tourists, while in the areas surrounding they would most likely be commuters. 
   
 ### COVID-19 data
 

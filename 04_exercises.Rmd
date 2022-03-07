@@ -392,7 +392,54 @@ The following exercises will use the COVID-19 data from the NYT.
 
   11. Create a map that colors the states by the most recent cumulative number of COVID-19 cases (remember, these data report cumulative numbers so you don't need to compute that). Describe what you see. What is the problem with this map?
   
+```{r}
+states_map <- map_data("state")
+
+covid19_recent <- covid19 %>% 
+  mutate(state = str_to_lower(state)) %>% 
+  filter(date == "2022-03-05") %>% 
+  filter(fips <= 56 & fips != 15 & fips != 02)
+
+covid19_recent %>% 
+  ggplot() +
+  geom_map(map = states_map,
+           aes(map_id = state,
+               fill = cases)) +
+  scale_fill_viridis_c(option = "viridis") +
+  expand_limits(x = states_map$long, 
+                y = states_map$lat) +
+  labs(title = "Map of Cumulative Covid19 Cases, by State, as of March 5, 2022",
+       fill = "Cases") +
+  theme_map()
+```
+
+What you can see is that the states of California, Texas, Florida, and New York have had the highest cumulative cases over the course of this pandemic. The issue with this graph is that it is essentially showing what the populations of each state are, and the states with the highest populations are the ones showing the highest total number of cases.
+  
   12. Now add the population of each state to the dataset and color the states by most recent cumulative cases/10,000 people. See the code for doing this with the Starbucks data. You will need to make some modifications. 
+  
+```{r}
+states_map <- map_data("state")
+
+covid19_recent <- covid19 %>% 
+  mutate(state = str_to_lower(state)) %>% 
+  filter(date == "2022-03-05") %>%
+  left_join(census_pop_est_2018,
+            by = c("state")) %>% 
+  mutate(cases_per_10000 = (cases/est_pop_2018)*10000) %>% 
+  filter(fips <= 56 & fips != 15 & fips != 02)
+
+covid19_recent %>% 
+  ggplot() +
+  geom_map(map = states_map,
+           aes(map_id = state,
+               fill = cases_per_10000)) +
+  scale_fill_viridis_c(option = "viridis") +
+  expand_limits(x = states_map$long, 
+                y = states_map$lat) +
+  labs(title = "Map of Covid19 Cases per 10,000 People, by State, as of March 5, 2022",
+       fill = "Cases per 10,000") +
+  theme_map()
+```
   
   13. **CHALLENGE** Choose 4 dates spread over the time period of the data and create the same map as in exercise 12 for each of the dates. Display the four graphs together using faceting. What do you notice?
   
@@ -402,17 +449,79 @@ These exercises use the datasets `MplsStops` and `MplsDemo` from the `carData` l
 
   14. Use the `MplsStops` dataset to find out how many stops there were for each neighborhood and the proportion of stops that were for a suspicious vehicle or person. Sort the results from most to least number of stops. Save this as a dataset called `mpls_suspicious` and display the table.  
   
+```{r}
+mpls_suspicious <- MplsStops %>% 
+  group_by(neighborhood, problem) %>% 
+  summarize(num_stops = n()) %>% 
+  mutate(tot_num_stops = sum(num_stops)) %>% 
+  filter(problem == "suspicious") %>% 
+  mutate(prop_suspicious = num_stops/tot_num_stops) %>% 
+  arrange(desc(tot_num_stops))
+
+mpls_suspicious
+```
+
+  
   15. Use a `leaflet` map and the `MplsStops` dataset to display each of the stops on a map as a small point. Color the points differently depending on whether they were for suspicious vehicle/person or a traffic stop (the `problem` variable). HINTS: use `addCircleMarkers`, set `stroke = FAlSE`, use `colorFactor()` to create a palette.  
+  
+```{r}
+pal <- colorFactor(palette = c("Red", "Blue"),
+                   domain = MplsStops$problem)
+
+leaflet(data = MplsStops) %>% 
+  addTiles() %>% 
+  addCircleMarkers(lng = ~long,
+                    lat = ~lat,
+                    opacity = 1,
+                    color = ~pal(problem),
+                    stroke = FALSE,
+                    radius = 1) %>% 
+  addLegend(position = "topleft",
+            pal = pal,
+            values = ~problem, 
+            opacity = 1,
+            title = "Reason for Stop")
+```
+
   
   16. Save the folder from moodle called Minneapolis_Neighborhoods into your project/repository folder for this assignment. Make sure the folder is called Minneapolis_Neighborhoods. Use the code below to read in the data and make sure to **delete the `eval=FALSE`**. Although it looks like it only links to the .sph file, you need the entire folder of files to create the `mpls_nbhd` data set. These data contain information about the geometries of the Minneapolis neighborhoods. Using the `mpls_nbhd` dataset as the base file, join the `mpls_suspicious` and `MplsDemo` datasets to it by neighborhood (careful, they are named different things in the different files). Call this new dataset `mpls_all`.
 
-```{r, eval=FALSE}
+```{r}
 mpls_nbhd <- st_read("Minneapolis_Neighborhoods/Minneapolis_Neighborhoods.shp", quiet = TRUE)
 ```
 
+```{r}
+mpls_all <- mpls_nbhd %>% 
+  left_join(mpls_suspicious,
+            by = c("BDNAME" = "neighborhood")) %>% 
+  left_join(MplsDemo,
+            by = c("BDNAME" = "neighborhood"))
+```
+
+
   17. Use `leaflet` to create a map from the `mpls_all` data  that colors the neighborhoods by `prop_suspicious`. Display the neighborhood name as you scroll over it. Describe what you observe in the map.
+
+```{r}
+pal <- colorNumeric(palette = c("viridis"),
+                   domain = mpls_all$prop_suspicious)
+
+leaflet(mpls_all) %>% 
+  addTiles() %>% 
+  addPolygons(
+    fillColor = ~pal(prop_suspicious),
+    fillOpacity = 0.7,
+    label = ~BDNAME) %>% 
+  addLegend(position = "topleft",
+            pal = pal,
+            values = ~prop_suspicious, 
+            opacity = 0.7,
+            title = "Proportion of Stops that are Suspicious")
+```
+
+What you can see from the map is that the majority of stops in downtown and Northeast Minneapolis are based on traffic incidents. The further Southeast you go, the more that stops are due to suspicious people or cars. The Southwest is fairly mixed, it depends on the neighbourhood, and the Northwest is mixed as well.
   
   18. Use `leaflet` to create a map of your own choosing. Come up with a question you want to try to answer and use the map to help answer that question. Describe what your map shows. 
+  
   
   
 ## GitHub link

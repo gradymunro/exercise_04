@@ -12,7 +12,7 @@ output:
 
 
 ```{r setup, include=FALSE}
-#knitr::opts_chunk$set(echo = TRUE, error=TRUE, message=FALSE, warning=FALSE)
+knitr::opts_chunk$set(echo = TRUE, error=TRUE, message=FALSE, warning=FALSE)
 ```
 
 ```{r libraries}
@@ -235,10 +235,9 @@ starbucks_us_locations %>%
              shape = 18) +
   expand_limits(x = states_map$long - 2, 
                 y = states_map$lat) + 
-  labs(title = "Map of Starbucks Locations in the Lower 48, with States Coloured by the Number of Starbucks 
-       per 10,000 people",
-       fill = "Starbucks per 
-10,000 People") +
+  labs(title = "Map of Starbucks Locations in the Lower 48, with States Coloured \nby the Number of Starbucks per 10,000 people",
+       fill = "Starbucks per \n10,000 People",
+       caption = "Created by Grady Munro") +
   theme_map()
 ```
 
@@ -303,7 +302,6 @@ leaflet(data = favorite_stp_by_grady) %>%
             opacity = 1,
             title = "Top Three Locations")
 ```
-
   
 ## Revisiting old datasets
 
@@ -351,7 +349,7 @@ leaflet(data = Station_Num) %>%
             pal = pal,
             values = ~num_departures, 
             opacity = 1,
-            title = "Departures From Each Station")
+            title = "Departures From <br> Each Station")
 ```
   
   10. Only 14.4% of the trips in our data are carried out by casual users. Create a plot that shows which area(s) have stations with a much higher percentage of departures by casual users. What patterns do you notice? Also plot this on top of a map. I think it will be more clear what the patterns are.
@@ -381,7 +379,7 @@ leaflet(data = Station_Proportion) %>%
             pal = pal,
             values = ~proportion_departures, 
             opacity = 1,
-            title = "Proportion of Departures by Casual Riders")
+            title = "Proportion of Departures <br> by Casual Riders")
 ```
   
 When looking at this map, we can see that the areas with the highest proportion of casual riders are downtown Washington, specifically surrounding the National Mall. This makes sense as these riders would likely be tourists, while in the areas surrounding they would most likely be commuters. 
@@ -443,6 +441,38 @@ covid19_recent %>%
   
   13. **CHALLENGE** Choose 4 dates spread over the time period of the data and create the same map as in exercise 12 for each of the dates. Display the four graphs together using faceting. What do you notice?
   
+```{r}
+states_map <- map_data("state")
+
+covid19_recent <- covid19 %>% 
+  mutate(state = str_to_lower(state)) %>% 
+  filter(date == "2022-03-05" |
+           date == "2022-01-01" |
+           date == "2021-01-01" |
+           date == "2020-03-05") %>%
+  left_join(census_pop_est_2018,
+            by = c("state")) %>% 
+  mutate(cases_per_10000 = (cases/est_pop_2018)*10000) %>% 
+  filter(fips <= 56 & fips != 15 & fips != 02)
+
+covid19_recent %>% 
+  ggplot() +
+  geom_map(map = states_map,
+           aes(map_id = state,
+               fill = cases_per_10000)) +
+  scale_fill_viridis_c(option = "viridis") +
+  expand_limits(x = states_map$long, 
+                y = states_map$lat) +
+  facet_wrap(~date) +
+  labs(title = "Map of Covid19 Cases per 10,000 People, by State",
+       fill = "Cases per 10,000") +
+  theme_map() +
+  theme(legend.background = element_blank(),
+        legend.position = "right")
+```
+
+You can see that as time goes on, the number of cases per 10,000 is increasing across the board. In the earliest date, you can see that numbers are very low and many states don't have any covid cases, while most recent most states have between 2000-3000 cumulative cases per 10,000. 
+
 ## Minneapolis police stops
 
 These exercises use the datasets `MplsStops` and `MplsDemo` from the `carData` library. Search for them in Help to find out more information.
@@ -461,7 +491,6 @@ mpls_suspicious <- MplsStops %>%
 mpls_suspicious
 ```
 
-  
   15. Use a `leaflet` map and the `MplsStops` dataset to display each of the stops on a map as a small point. Color the points differently depending on whether they were for suspicious vehicle/person or a traffic stop (the `problem` variable). HINTS: use `addCircleMarkers`, set `stroke = FAlSE`, use `colorFactor()` to create a palette.  
   
 ```{r}
@@ -482,7 +511,6 @@ leaflet(data = MplsStops) %>%
             opacity = 1,
             title = "Reason for Stop")
 ```
-
   
   16. Save the folder from moodle called Minneapolis_Neighborhoods into your project/repository folder for this assignment. Make sure the folder is called Minneapolis_Neighborhoods. Use the code below to read in the data and make sure to **delete the `eval=FALSE`**. Although it looks like it only links to the .sph file, you need the entire folder of files to create the `mpls_nbhd` data set. These data contain information about the geometries of the Minneapolis neighborhoods. Using the `mpls_nbhd` dataset as the base file, join the `mpls_suspicious` and `MplsDemo` datasets to it by neighborhood (careful, they are named different things in the different files). Call this new dataset `mpls_all`.
 
@@ -497,7 +525,6 @@ mpls_all <- mpls_nbhd %>%
   left_join(MplsDemo,
             by = c("BDNAME" = "neighborhood"))
 ```
-
 
   17. Use `leaflet` to create a map from the `mpls_all` data  that colors the neighborhoods by `prop_suspicious`. Display the neighborhood name as you scroll over it. Describe what you observe in the map.
 
@@ -515,18 +542,39 @@ leaflet(mpls_all) %>%
             pal = pal,
             values = ~prop_suspicious, 
             opacity = 0.7,
-            title = "Proportion of Stops that are Suspicious")
+            title = "Proportion of Stops <br> that are Suspicious")
 ```
 
 What you can see from the map is that the majority of stops in downtown and Northeast Minneapolis are based on traffic incidents. The further Southeast you go, the more that stops are due to suspicious people or cars. The Southwest is fairly mixed, it depends on the neighbourhood, and the Northwest is mixed as well.
   
   18. Use `leaflet` to create a map of your own choosing. Come up with a question you want to try to answer and use the map to help answer that question. Describe what your map shows. 
   
+```{r}
+mpls_all <- mpls_all %>% 
+  mutate(stops_per_100 = (num_stops/population) * 100)
+
+pal <- colorNumeric(palette = c("viridis"),
+                   domain = mpls_all$stops_per_100)
+
+leaflet(mpls_all) %>% 
+  addTiles() %>% 
+  addPolygons(
+    fillColor = ~pal(stops_per_100),
+    fillOpacity = 0.7,
+    label = ~BDNAME) %>% 
+  addLegend(position = "topleft",
+            pal = pal,
+            values = ~stops_per_100, 
+            opacity = 0.7,
+            title = "Number of Suspicious Stops <br> per 100 People")
+```
   
+The question I want to answer is which neighbourhoods have the highest number of suspicious stops per 100 people. What you can see is that the neighbourhood of Downtown West by far has the highest number of suspicious stops per 100 people at around 46 stops. Following at second is the neighbourhood of Mid-City Industrial at around 32 stops. This these neighbourhoods are seeing a much higher number of suspicious stops once you control for the population of each neighbourhood. 
   
 ## GitHub link
 
   19. Below, provide a link to your GitHub page with this set of Weekly Exercises. Specifically, if the name of the file is 04_exercises.Rmd, provide a link to the 04_exercises.md file, which is the one that will be most readable on GitHub.
 
+[GitHub Link](https://github.com/gradymunro/exercise_04)
 
 **DID YOU REMEMBER TO UNCOMMENT THE OPTIONS AT THE TOP?**
